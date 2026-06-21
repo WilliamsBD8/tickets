@@ -1,0 +1,64 @@
+# Red interna: la API resuelve el host `db` vía DNS de Docker.
+# El front (Nginx) expone la UI y proxea `/api/*` al servicio `api` (mismo origen en el navegador).
+# Volúmenes:
+#   - postgres_data: datos persistentes de PostgreSQL (supervivencia entre reinicios).
+#   - Montaje de tickets.csv en /app/data/tickets.csv (solo lectura) para el seed inicial.
+services:
+  db:
+    image: postgres:16.4-bookworm
+    environment:
+      POSTGRES_USER: tickets
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_in_production}
+      POSTGRES_DB: tickets
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tickets -d tickets"]
+      interval: 5s
+      timeout: 5s
+      retries: 10 
+      start_period: 10s
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://tickets:${POSTGRES_PASSWORD:-changeme_in_production}@db:5432/tickets
+      AUTO_SEED_CSV: ${AUTO_SEED_CSV:-true}
+    volumes:
+      - type: bind
+        source: ./tickets.csv
+        target: /app/data/tickets.csv
+        read_only: true
+    networks:
+      - internal
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    networks:
+      - internal
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      api:
+        condition: service_started
+    restart: unless-stopped
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  postgres_data:
