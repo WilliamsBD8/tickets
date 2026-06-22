@@ -13,8 +13,9 @@ router = APIRouter()
     response_model=AskResponse,
     summary="Preguntar en lenguaje natural",
     description=(
-        "Usa métricas agregadas de la base de datos y la base de conocimiento (markdown) "
-        "para responder sobre tickets. Modo `mock` por defecto; con OpenAI, razona sobre el mismo contexto."
+        "Combina métricas agregadas, una **muestra de tickets leída de la base** (búsqueda por palabras "
+        "de la pregunta o los más recientes) y la base de conocimiento (markdown). "
+        "Modo `mock` por defecto; con OpenAI, el modelo responde solo con ese contexto."
     ),
 )
 async def ask_endpoint(

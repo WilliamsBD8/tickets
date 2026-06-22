@@ -6,13 +6,15 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
+from app.models.ticket import Ticket
+from app.repositories.ask_context_repository import AskContextRepository
 from app.repositories.metrics_repository import MetricsRepository, TicketMetricsSnapshot
 
 logger = logging.getLogger(__name__)
 
 
 class AskService:
-    """Responde preguntas en lenguaje natural usando métricas agregadas + base de conocimiento."""
+    """Responde en lenguaje natural usando métricas, muestra de tickets en BD y base de conocimiento."""
 
     def __init__(self, settings: Settings, knowledge_text: str) -> None:
         self._settings = settings
@@ -39,9 +41,66 @@ class AskService:
         ]
         return "\n".join(lines)
 
-    def _mock_answer(self, question: str, snap: TicketMetricsSnapshot) -> str:
+    @staticmethod
+    def _format_ticket_compact(t: Ticket) -> str:
+        lines = [
+            f"ID: {t.id}",
+            f"Asunto: {(t.ticket_subject or '')[:220]}",
+            f"Estado: {t.ticket_status}",
+            f"Producto: {t.product_purchased}",
+            f"Tipo (CSV): {t.ticket_type}",
+            f"Prioridad normalizada: {t.priority_normalized}",
+        ]
+        desc = (t.ticket_description or "").strip()
+        if desc:
+            lines.append(f"Descripción (recorte): {desc[:450]}")
+
+        ai = t.analysis  # type: ignore[assignment]
+        if ai is not None:
+            lines.extend(
+                [
+                    f"IA categoría: {ai.category}",
+                    f"IA prioridad: {ai.priority}",
+                    f"IA sentimiento: {ai.sentiment}",
+                    f"IA urgencia: {ai.urgency}",
+                    f"IA equipo: {ai.suggested_team}",
+                    f"IA resumen: {(ai.summary or '')[:320]}",
+                ],
+            )
+        return "\n".join(lines)
+
+    def _format_tickets_block(self, tickets: list[Ticket]) -> str:
+        if not tickets:
+            return "(No hay tickets en la base de datos.)"
+        max_chars = self._settings.ask_context_max_chars
+        parts: list[str] = []
+        used = 0
+        for t in tickets:
+            chunk = self._format_ticket_compact(t)
+            sep = 10
+            if used + len(chunk) + sep > max_chars:
+                remaining = len(tickets) - len(parts)
+                if remaining > 0:
+                    parts.append(f"... ({remaining} ticket(s) omitidos por límite de contexto)")
+                break
+            parts.append(chunk)
+            used += len(chunk) + sep
+        return "\n---\n".join(parts)
+
+    def _mock_answer(self, question: str, snap: TicketMetricsSnapshot, tickets: list[Ticket]) -> str:
         q = question.lower()
         chunks: list[str] = []
+
+        if tickets:
+            preview = "\n".join(
+                f"- **#{t.id}** — {(t.ticket_subject or 'sin asunto')[:100]}"
+                for t in tickets[:10]
+            )
+            chunks.append(
+                "### Tickets leídos de la base de datos\n"
+                f"Se cargaron **{len(tickets)}** filas (coincidencia con palabras de tu pregunta o las más recientes).\n"
+                f"{preview}",
+            )
 
         if any(w in q for w in ("crític", "critical", "grave", "urgente", "urgent")):
             chunks.append(
@@ -66,30 +125,34 @@ class AskService:
                 "Facturación, Logística, Cuentas) y prioridades sugeridas en el markdown de políticas.",
             )
 
-        if not chunks:
-            chunks.append(
-                f"Resumen rápido: **{snap.total_tickets}** tickets en total, "
-                f"**{snap.analyzed_tickets}** ya tienen análisis IA y **{snap.pending_analysis}** pendientes. "
-                f"En los últimos 7 días hay **{snap.tickets_last_7_days}** tickets con fecha de compra reciente.",
-            )
         chunks.append(
-            "Esta respuesta usa el **modo mock** (reglas + métricas). "
-            "Con `LLM_PROVIDER=openai` y `OPENAI_API_KEY`, se usaría el modelo para razonar sobre el mismo contexto.",
+            f"**Resumen agregado (BD):** {snap.total_tickets} tickets · {snap.analyzed_tickets} con IA · "
+            f"{snap.pending_analysis} pendientes de IA · {snap.tickets_last_7_days} con compra en últimos 7 días.",
+        )
+        chunks.append(
+            "Modo **mock**: respuesta basada en métricas + muestra de tickets leídos de la base. "
+            "Con `LLM_PROVIDER=openai` y `OPENAI_API_KEY`, el modelo razona sobre el mismo contexto.",
         )
         return "\n\n".join(chunks)
 
-    async def _openai_answer(self, question: str, metrics_block: str) -> str:
+    async def _openai_answer(self, question: str, metrics_and_tickets: str) -> str:
         key = self._settings.openai_api_key
         if not key:
             msg = "OPENAI_API_KEY requerida para modo openai en /ask"
             raise RuntimeError(msg)
 
+        room = max(2500, 48_000 - len(metrics_and_tickets) - len(question))
+        kb = self._knowledge_text[: min(14_000, room)]
+
         system = (
-            "Eres un analista de soporte. Responde en español, de forma breve y accionable, "
-            "usando SOLO la información de métricas y la base de conocimiento proporcionadas. "
-            "Si no hay datos sufícientes, dilo explícitamente. No inventes cifras."
+            "Eres un analista de soporte. Responde en español, de forma breve y accionable. "
+            "Usa SOLO: (1) las métricas agregadas, (2) el bloque de tickets con ID real extraído de la base de datos, "
+            "(3) la base de conocimiento. Puedes citar IDs de ticket que aparezcan en el bloque. "
+            "No inventes tickets ni cifras que no estén en el contexto."
         )
-        user = f"{metrics_block}\n\n### Base de conocimiento\n{self._knowledge_text[:14000]}\n\n### Pregunta\n{question}"
+        user = (
+            f"{metrics_and_tickets}\n\n### Base de conocimiento\n{kb}\n\n### Pregunta\n{question}"
+        )
 
         url = f"{self._settings.openai_base_url.rstrip('/')}/chat/completions"
         payload = {
@@ -112,12 +175,20 @@ class AskService:
         snap = await MetricsRepository(session).get_snapshot()
         metrics_block = self._format_snapshot(snap)
 
+        ctx_repo = AskContextRepository(session)
+        tickets = await ctx_repo.fetch_tickets_for_context(
+            question,
+            self._settings.ask_context_max_tickets,
+        )
+        tickets_block = self._format_tickets_block(tickets)
+        metrics_and_tickets = metrics_block + "\n\n### Tickets (registros en base de datos)\n" + tickets_block
+
         if self._settings.llm_provider == "openai" and self._settings.openai_api_key:
             try:
-                text = await self._openai_answer(question, metrics_block)
+                text = await self._openai_answer(question, metrics_and_tickets)
                 return text, f"openai:{self._settings.openai_model}"
             except (httpx.HTTPError, KeyError, RuntimeError) as e:
                 logger.warning("Fallo OpenAI en /ask, usando mock: %s", e)
-                return self._mock_answer(question, snap), "mock-ask-fallback"
+                return self._mock_answer(question, snap, tickets), "mock-ask-fallback"
 
-        return self._mock_answer(question, snap), "mock-ask-v1"
+        return self._mock_answer(question, snap, tickets), "mock-ask-v1"

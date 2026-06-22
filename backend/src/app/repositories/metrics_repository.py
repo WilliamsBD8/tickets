@@ -46,9 +46,13 @@ class MetricsRepository:
         eff_pri = func.lower(
             func.coalesce(TicketAnalysis.priority, Ticket.priority_normalized, "unknown"),
         )
-        pr_rows = await self._session.execute(
-            select(eff_pri, func.count()).group_by(eff_pri),
+        pr_stmt = (
+            select(eff_pri, func.count(Ticket.id))
+            .select_from(Ticket)
+            .outerjoin(TicketAnalysis, TicketAnalysis.ticket_id == Ticket.id)
+            .group_by(eff_pri)
         )
+        pr_rows = await self._session.execute(pr_stmt)
         by_priority: dict[str, int] = {}
         high_or_critical = 0
         for pri, cnt in pr_rows.all():
@@ -58,9 +62,15 @@ class MetricsRepository:
                 high_or_critical += int(cnt)
 
         cat_expr = func.coalesce(TicketAnalysis.category, Ticket.ticket_type, "Sin categoría")
-        cat_rows = await self._session.execute(
-            select(cat_expr, func.count()).group_by(cat_expr).order_by(func.count().desc()).limit(25),
+        cat_stmt = (
+            select(cat_expr, func.count(Ticket.id))
+            .select_from(Ticket)
+            .outerjoin(TicketAnalysis, TicketAnalysis.ticket_id == Ticket.id)
+            .group_by(cat_expr)
+            .order_by(func.count(Ticket.id).desc())
+            .limit(25)
         )
+        cat_rows = await self._session.execute(cat_stmt)
         by_category = {str(c or "Sin categoría"): int(n) for c, n in cat_rows.all()}
 
         sent_rows = await self._session.execute(

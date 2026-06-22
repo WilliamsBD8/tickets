@@ -80,3 +80,13 @@ class AnalyzeTicketsRequest(BaseModel):
 class AnalyzeTicketsResponse(BaseModel):
     processed: int = Field(ge=0, description="Tickets analizados en esta ejecución")
     provider: str = Field(description="Proveedor LLM configurado (mock u openai)")
+
+
+class IngestCsvResponse(BaseModel):
+    imported: int = Field(ge=0, description="Filas de ticket importadas (ids únicos)")
+    replace: bool = Field(description="Si se vació la tabla antes de importar")
+    analyzed: int = Field(
+        default=0,
+        ge=0,
+        description="Tickets analizados por IA en esta petición (solo si auto_analyze=true)",
+    )

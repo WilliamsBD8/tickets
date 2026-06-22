@@ -34,6 +34,7 @@ Copia `.env.example` a `.env` y ajusta.
 - `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASE_URL`: solo si usas OpenAI.
 - `KNOWLEDGE_BASE_PATH`: markdown de políticas para `/ask` (por defecto `backend/knowledge_base/support_policies.md`).
 - `AUTO_ANALYZE_ON_STARTUP` / `ANALYZE_STARTUP_MAX`: análisis IA tras el seed (tope para no disparar coste con APIs de pago).
+- `ASK_CONTEXT_MAX_TICKETS` / `ASK_CONTEXT_MAX_CHARS`: cuántas filas y cuántos caracteres de tickets incluye `/ask` al consultar la BD.
 
 ## Endpoints principales
 
@@ -42,8 +43,9 @@ Copia `.env.example` a `.env` y ajusta.
 | `GET` | `/health` | Estado del servicio |
 | `GET` | `/tickets` | Lista paginada + filtros; `analyzed_only=true` solo tickets con IA |
 | `POST` | `/tickets/analyze` | Procesa hasta `limit` tickets pendientes de análisis |
+| `POST` | `/tickets/ingest` | Sube CSV (`multipart/form-data`: `file`, `replace`, `auto_analyze`) |
 | `GET` | `/metrics` | KPIs agregados (totales, prioridades, categorías, top productos/clientes, etc.) |
-| `POST` | `/ask` | Pregunta en lenguaje natural (usa métricas + base de conocimiento; mock u OpenAI) |
+| `POST` | `/ask` | Pregunta en lenguaje natural (métricas + **muestra de tickets desde BD** + KB) |
 
 Documentación interactiva: `/docs`.
 

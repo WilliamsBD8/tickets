@@ -70,6 +70,12 @@ export interface AnalyzeTicketsResponse {
   provider: string;
 }
 
+export interface IngestCsvResponse {
+  imported: number;
+  replace: boolean;
+  analyzed: number;
+}
+
 export interface TicketListQuery {
   category?: string;
   priority?: string;

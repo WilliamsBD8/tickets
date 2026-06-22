@@ -4,6 +4,7 @@ import { fetchTickets, triggerAnalyze } from "./api/tickets";
 import { AskPanel } from "./components/AskPanel";
 import { ChartsPanel } from "./components/ChartsPanel";
 import { FiltersBar } from "./components/FiltersBar";
+import { IngestCsvPanel } from "./components/IngestCsvPanel";
 import { KpiCards } from "./components/KpiCards";
 import { TicketsTable } from "./components/TicketsTable";
 import type { MetricsResponse, TicketEnriched, TicketListQuery } from "./types/api";
@@ -122,6 +123,13 @@ export default function App() {
           {globalError}
         </div>
       ) : null}
+
+      <IngestCsvPanel
+        onDone={async () => {
+          await refreshMetrics();
+          await loadTickets();
+        }}
+      />
 
       <KpiCards metrics={metrics} loading={metricsLoading} onRefresh={refreshMetrics} />
 

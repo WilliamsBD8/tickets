@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import io
 import re
 from pathlib import Path
 
@@ -106,15 +107,31 @@ def row_to_ticket(row: dict[str, str]) -> Ticket:
     )
 
 
+def load_tickets_from_fileobj(fileobj: io.TextIOBase) -> list[Ticket]:
+    reader = csv.DictReader(fileobj)
+    if reader.fieldnames is None or "Ticket ID" not in reader.fieldnames:
+        msg = "El CSV debe incluir la columna 'Ticket ID' y cabeceras compatibles con el dataset."
+        raise ValueError(msg)
+    by_id: dict[int, Ticket] = {}
+    for row in reader:
+        ticket = row_to_ticket(row)
+        by_id[ticket.id] = ticket
+    return list(by_id.values())
+
+
+def load_tickets_from_bytes(data: bytes, encoding: str = "utf-8") -> list[Ticket]:
+    try:
+        text = data.decode(encoding)
+    except UnicodeDecodeError as e:
+        msg = "El archivo debe estar codificado en UTF-8."
+        raise ValueError(msg) from e
+    return load_tickets_from_fileobj(io.StringIO(text))
+
+
 def load_tickets_from_csv(path: Path) -> list[Ticket]:
     if not path.is_file():
         msg = f"No se encontró el dataset: {path}"
         raise FileNotFoundError(msg)
 
-    by_id: dict[int, Ticket] = {}
     with path.open(encoding="utf-8", newline="") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            ticket = row_to_ticket(row)
-            by_id[ticket.id] = ticket
-    return list(by_id.values())
+        return load_tickets_from_fileobj(f)

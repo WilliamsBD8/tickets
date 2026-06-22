@@ -64,6 +64,26 @@ class Settings(BaseSettings):
         description="Orígenes permitidos por CORS (separados por coma). Vacío desactiva CORS.",
     )
 
+    csv_upload_max_bytes: int = Field(
+        default=25_000_000,
+        ge=1_000_000,
+        le=100_000_000,
+        description="Tamaño máximo del CSV en POST /tickets/ingest (bytes).",
+    )
+
+    ask_context_max_tickets: int = Field(
+        default=48,
+        ge=5,
+        le=200,
+        description="Máximo de tickets incluidos como contexto textual en /ask.",
+    )
+    ask_context_max_chars: int = Field(
+        default=24_000,
+        ge=4000,
+        le=120_000,
+        description="Tope de caracteres del bloque de tickets enviado al modelo en /ask.",
+    )
+
 
 def get_settings() -> Settings:
     return Settings()
