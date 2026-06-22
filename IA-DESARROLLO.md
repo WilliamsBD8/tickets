@@ -1,15 +1,11 @@
 # Uso de IA en el desarrollo (resumen)
 
-Este documento cumple el apartado de la prueba técnica sobre **cómo usaste IA como herramienta de construcción**, no solo dentro del producto.
-
 ## Herramientas
 
 | Herramienta | Uso principal |
 |-------------|----------------|
 | **Cursor** (agente / chat) | Generación y refactor de código (FastAPI, React, Docker), búsqueda en el repo, corrección de bugs (p. ej. métricas con producto cartesiano), alineación con el enunciado. |
 | **Modelo en el IDE** | Explicación de errores, borradores de README y textos, revisión de consistencia entre API y tipos del front. |
-
-*Si además usaste ChatGPT, Claude u otro asistente en paralelo, añádelo aquí con una línea.*
 
 ## Para qué se usó
 
@@ -31,7 +27,3 @@ Este documento cumple el apartado de la prueba técnica sobre **cómo usaste IA 
 - Reglas de usuario en **Cursor** (commits, estilo de respuestas, español).  
 - Regla de proyecto **`.cursor/rules/project-context.mdc`** (`alwaysApply`) que apunta a **`AGENTS.md`** y al árbol del monorepo.  
 - Perfiles en **`.cursor/agents/`**: `solution-architect`, `backend-engineer`, `frontend-engineer`, `devops-engineer`, `qa-integracion` — ver **`AGENTS.md`** en la raíz para el orden de recreación.
-
----
-
-*Puedes ampliar este archivo con ejemplos concretos (p. ej. “pedí X y tuve que corregir Y a mano”) para la entrevista.*
