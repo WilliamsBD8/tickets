@@ -29,6 +29,18 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://tickets:${POSTGRES_PASSWORD:-changeme_in_production}@db:5432/tickets
       AUTO_SEED_CSV: ${AUTO_SEED_CSV:-true}
+      DATASET_CSV_PATH: ${DATASET_CSV_PATH:-/app/data/tickets.csv}
+      KNOWLEDGE_BASE_PATH: ${KNOWLEDGE_BASE_PATH:-/app/knowledge_base/support_policies.md}
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      AUTO_ANALYZE_ON_STARTUP: ${AUTO_ANALYZE_ON_STARTUP:-true}
+      ANALYZE_STARTUP_MAX: ${ANALYZE_STARTUP_MAX:-50000}
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://127.0.0.1:3000,http://localhost:3000,http://127.0.0.1:5173,http://localhost:5173}"
+      CSV_UPLOAD_MAX_BYTES: ${CSV_UPLOAD_MAX_BYTES:-25000000}
+      ASK_CONTEXT_MAX_TICKETS: ${ASK_CONTEXT_MAX_TICKETS:-48}
+      ASK_CONTEXT_MAX_CHARS: ${ASK_CONTEXT_MAX_CHARS:-24000}
     volumes:
       - type: bind
         source: ./tickets.csv

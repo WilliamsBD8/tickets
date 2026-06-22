@@ -1,0 +1,15 @@
+---
+description: Contexto del monorepo AI Support Ticket Analyzer — recreación y convenciones
+alwaysApply: true
+---
+
+# Proyecto: AI Support Ticket Analyzer
+
+Antes de implementar o refactorizar, lee **`AGENTS.md`** en la raíz del repositorio: define el **orden de agentes**, el **árbol de carpetas**, **comandos de verificación** y **trampa común** (joins en métricas sin `FROM` explícito).
+
+- Backend Python: `backend/src/app/` (FastAPI, capas controller → service → repository).
+- Frontend: `frontend/src/` (React + Vite, API bajo prefijo `/api`).
+- Enunciado: `prueba-tecnica.md`.
+- Perfiles de agente en `.cursor/agents/*.md` (`backend-engineer`, `frontend-engineer`, `devops-engineer`, `solution-architect`, `qa-integracion`).
+
+Mantén cambios **acotados** al requerimiento; no rompas el contrato de los endpoints documentados en `README.md` raíz sin actualizar la documentación.

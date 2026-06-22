@@ -25,6 +25,8 @@ Documentación OpenAPI: http://127.0.0.1:8000/docs
 
 ## Variables de entorno (opcional)
 
+Este archivo es **`backend/.env`** (carpeta `backend/`). FastAPI **no** lee el `.env` de la raíz cuando ejecutas `uvicorn` desde aquí. Si usas **Docker Compose**, el `.env` de la raíz define también las mismas claves de API (las inyecta `docker-compose.yml` en el contenedor); para desarrollo local, cópialas o ajústalas en `backend/.env`.
+
 Copia `.env.example` a `.env` y ajusta.
 
 - `DATABASE_URL`: por defecto SQLite en `backend/data/tickets.db`.
@@ -57,7 +59,7 @@ Desde la **raíz del repositorio** (donde está `docker-compose.yml`):
 
 ```powershell
 copy .env.example .env
-# Edita POSTGRES_PASSWORD en .env
+# Edita POSTGRES_PASSWORD y, si quieres, LLM_PROVIDER / OPENAI_* / CORS_ORIGINS / límites (mismas claves que backend/.env.example)
 
 docker compose up --build -d
 ```

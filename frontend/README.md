@@ -27,6 +27,8 @@ Abre **http://127.0.0.1:5173**. Las peticiones a `/api/*` las reenvía Vite al b
 
 ## Variables de entorno
 
+Vite lee **`frontend/.env`**, no el `.env` de la raíz del monorepo (ese es solo para Docker Compose).
+
 Copia `.env.example` a `.env` si quieres cambiar el host del API en desarrollo:
 
 - `VITE_API_PROXY_TARGET` — destino del proxy (por defecto `http://127.0.0.1:8000`).
